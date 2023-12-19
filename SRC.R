@@ -235,3 +235,109 @@ ggplot(fifa_data, aes(x=age, y=potential)) +
   geom_point(alpha=0.5) +
   geom_smooth(method="lm", color="purple") +
   labs(title="Зависимость потенциала игроков от возраста", x="Возраст", y="Потенциал")
+
+
+
+
+
+#Overall
+
+library(dplyr)
+library(randomForest)
+library(caret)
+
+# 1. Подготовка данных
+manutd_players <- fifa_data %>%
+  filter(club_name == "Manchester United") %>%
+  select(age, potential, value_eur, wage_eur, overall)  # Выберите интересующие вас признаки
+
+# 2. Разделение данных на обучающую и тестовую выборки
+set.seed(123)
+data_split <- initial_split(manutd_players, prop = 0.8, strata = 'overall')
+train_data <- training(data_split)
+test_data <- testing(data_split)
+
+# 3. Обучение модели случайного леса
+rf_model <- randomForest(overall ~ ., data = train_data)
+
+# 4. Оценка модели
+predictions <- predict(rf_model, test_data)
+result <- postResample(predictions, test_data$overall)
+print(result)
+
+library(Metrics)
+
+# Оценка модели
+mse <- mse(test_data$overall, predictions)
+mae <- mae(test_data$overall, predictions)
+r2 <- R2(predictions, test_data$overall)
+
+# Вывод результатов
+cat("MSE:", mse, "\n")
+cat("MAE:", mae, "\n")
+cat("R2:", r2, "\n")
+
+
+# Добавление предсказаний к тестовым данным
+test_data$predicted_overall <- predict(rf_model, test_data)
+
+# Визуализация сравнения фактических и предсказанных значений
+ggplot(test_data, aes(x = overall, y = predicted_overall)) +
+  geom_point(color = "blue") +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "red") +
+  labs(title = "Сравнение фактических и предсказанных значений Overall",
+       x = "Фактический Overall",
+       y = "Предсказанный Overall") +
+  theme_minimal()
+
+
+
+
+
+
+# Подключение необходимых библиотек
+library(dplyr)
+library(ggplot2)
+library(stats)
+
+# Предполагается, что fifa_data - это ваш DataFrame
+# Здесь используется примерный код для загрузки данных
+# fifa_data <- read.csv('path_to_your_data.csv')
+
+# Создание модели линейной регрессии
+model3 <- lm(overall ~ attacking_crossing + attacking_finishing + attacking_heading_accuracy + skill_dribbling, data = fifa_data)
+
+# Вывод результатов модели
+summary(model3)
+
+plot(model3, which = 1)
+abline(h = 0, col = "red", lwd = 2)
+
+
+library(ggplot2)
+
+# Извлечение остатков и предсказанных значений
+residuals <- resid(model3)
+fitted_values <- fitted(model3)
+
+# Подготовка данных для графика
+data_for_plot <- data.frame(
+  Предсказанные_Значения = fitted_values,
+  Остатки = residuals
+)
+
+# Создание графика остатков
+ggplot(data_for_plot, aes(x = Предсказанные_Значения, y = Остатки)) +
+  geom_point(color = "blue", alpha = 0.5) +
+  geom_hline(yintercept = 0, color = "red", linetype = "dashed", size = 1) +
+  labs(
+    title = "График Остатков Модели Линейной Регрессии",
+    x = "Предсказанные значения Overall",
+    y = "Остатки"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12)
+  )
